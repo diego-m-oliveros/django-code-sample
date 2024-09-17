@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% load static %}
+{% load report_tags %}
+
+{% block stylesheets %}
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vendor/daterangepicker.css' %}">
+{% endblock %}
+
+{% block extra_head_scripts %}
+  <script type="text/javascript" src="{% static 'js/vendor/Chart.bundle.min.js' %}"></script>
+{% endblock %}
+
+{% block extra_facebook_events %}
+  fbq('track', 'ViewContent');
+{% endblock %}
+
+{% block content %}
+  <section class="dates-filters">
+    <h2>{{ current_dashboard.name }}</h2>
+
+    <form class="dates" method="post" action="{% url 'dashboard:update_settings' %}">
+      {% csrf_token %}
+      <input type="text" name="start_date" class="start" value="{{ start_date|date:"M d, Y" }}" />
+      <span>&mdash;</span>
+      <input type="text" name="end_date" class="end" value="{{ end_date|date:"M d, Y" }}" />
+    </form>
+
+    <div class="filter {% if current_filter %}filtered{% endif %}">
+      {% if current_filter %}
+        <form class="" method="post" action="{% url 'dashboard:update_settings' %}">
+          {% csrf_token %}
+          <span>Filtered by "{{ current_filter }}"</span>
+          <input type="submit" name="remove_filter" class="" value="reset" />
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'dashboard:update_settings' %}">
+          {% csrf_token %}
+          <input type="search" name="text_filter" placeholder="filter, e.g. 'mobile'" value="" />
+        </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="dashboard-contents">
+    {% for report in reports %}
+      {% include 'dashboard/report_types/report.html'  %}
+    {% endfor %}
+  </section>
+
+  <div id="hover-details"></div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script type="text/javascript" src="{% static 'js/vendor/jquery.tablesorter.combined.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/vendor/jquery.tablesorter.pager.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/vendor/moment.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/vendor/daterangepicker.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/vendor/perfect-scrollbar.min.js' %}"></script>
+  <script type="text/javascript" src="{% static 'js/dashboards.js' %}"></script>
+{% endblock %}
+
+{% block js_after_ready %}
+  $('.dates-filters .dates').daterangepicker({
+    opens: 'left',
+    ranges: {
+        'Today': [moment(), moment()],
+        'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+        'Last 7 Days': [moment().subtract(7, 'days'), moment().subtract(1, 'days')],
+        'Last 30 Days': [moment().subtract(30, 'days'), moment().subtract(1, 'days')],
+        'This Month': [moment().startOf('month'), moment().subtract(1, 'days')],
+        'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+    },
+    "minDate": moment().subtract(730, 'days'),
+    "maxDate": moment(),
+    "startDate": "{{ start_date|date:"m/d/Y" }}",
+    "endDate": "{{ end_date|date:"m/d/Y" }}"
+  }, function(start, end, label) {
+    $('.dates-filters .dates .start').val(start.format('MMM DD, YYYY'));
+    $('.dates-filters .dates .end').val(end.format('MMM DD, YYYY'));
+    $('.dates-filters form.dates').submit();
+  });
+
+  var dynamicContents = $('.dynamic-contents');
+  dynamicContents.each(function () {
+    var cont = $(this);
+    cont.load(cont.data('url'));
+  });
+
+  new PerfectScrollbar('.sidebar .dashboards');
+{% endblock %}
